@@ -4,7 +4,6 @@ El funcionamiento de este es mayormente por la librería de 'pymodbus' el cual r
 puerto COM recuperando el valor deseado del sensor alojadas en su protocolo de comunicación.
 --------------------------------------------------'''
 
-
 import threading
 import queue
 from pymodbus.client import ModbusSerialClient
@@ -38,14 +37,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS sensor_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp DATETIME,
-            registro_com1 INTEGER,
-            registro_com2 INTEGER,
-            registro_com3 INTEGER,
-            registro_com4 INTEGER,
-            registro_com5 INTEGER,
-            registro_com6 INTEGER,
-            registro_com7 INTEGER,
-            registro_com8 INTEGER
+            CO2_IN INTEGER,
+            NO2_IN INTEGER,
+            SO2_IN INTEGER,
+            TEMP_1 INTEGER,
+            CO2_OUT INTEGER,
+            NO2_OUT INTEGER,
+            SO2_OUT INTEGER,
+            TEMP_2 INTEGER
         )
     """)
     conn.commit()
@@ -64,9 +63,9 @@ def insertar_lecturas():
             timestamp = datetime.now()
 
             cursor.execute("""
-                INSERT INTO sensor_logs (timestamp, registro_com1, registro_com2, registro_com3,
-                                          registro_com4, registro_com5, registro_com6, 
-                                          registro_com7, registro_com8)
+                INSERT INTO sensor_logs (timestamp,
+                CO2_IN, NO2_IN, SO2_IN,TEMP_1,
+                CO2_OUT, NO2_OUT, SO2_OUT, TEMP_2)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (timestamp, *registros))
 
@@ -127,18 +126,19 @@ def recolectar_lecturas(lecturas):
 
         with lock:
             registros = [
-                lecturas.get('CO2', None), 
-                lecturas.get('NO2', None),
-                lecturas.get('COM6', None),
-                lecturas.get('COM7', None),
-                lecturas.get('COM8', None),
-                lecturas.get('COM9', None),
-                lecturas.get('COM10', None),
-                lecturas.get('COM11', None)
+                lecturas.get('CO2_IN', None), 
+                lecturas.get('NO2_IN', None),
+                lecturas.get('SO2_IN', None),
+                lecturas.get('TEMP_1', None),
+                lecturas.get('CO2_OUT', None),
+                lecturas.get('CO2_OUT', None),
+                lecturas.get('SO2_OUT', None),
+                lecturas.get('TEMP_2', None)
             ]
 
         print(f"[QUEUE] Lecturas recolectadas: {registros}")
-        cola_lecturas.put(registros)  # Envía las lecturas a la cola para insertar
+        # Envía las lecturas a la cola para insertar
+        cola_lecturas.put(registros)  
 
 
 # *****************************************************INICIO DE EJECUCIÓN*****************************************************
@@ -156,16 +156,16 @@ time.sleep(10)
 init_db()
 time.sleep(2)
 
-# Lista global de los dispositivos conectados al ordenador
+# Lista global de los dispositivos conectados al ordenador, aqui se modifica la dirección COM que se encuentra el sensor.
 dispositivos = {
-    'COM4': 'CO2',
-    'COM5': 'NO2'
-    # 'COM6': 'Medidor de Presión',
-    # 'COM7': 'Sensor de Humedad',
-    # 'COM8': 'Control de Luz',
-    # 'COM9': 'Medidor de Flujo',
-    # 'COM10': 'Sensor de Nivel',
-    # 'COM11': 'Control de Ventilación'
+    'COM4': 'CO2_IN',
+    'COM5': 'NO2_IN'
+    # 'COM6': 'SO2_IN',
+    # 'COM7': 'TEMP_1',
+    # 'COM8': 'CO2_OUT',
+    # 'COM9': 'NO2_OUT',
+    # 'COM10': 'SO2_OUT',
+    # 'COM11': 'TEMP_2'
 }
 
 # Lista global de las lecturas recibidas en tiempo real
