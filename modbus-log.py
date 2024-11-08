@@ -159,8 +159,8 @@ time.sleep(2)
 # Lista global de los dispositivos conectados al ordenador, aqui se modifica la dirección COM que se encuentra el sensor.
 dispositivos = {
     'COM4': 'CO2_IN',
-    'COM5': 'NO2_IN'
-    # 'COM6': 'SO2_IN',
+    'COM5': 'NO2_IN',
+    'COM3': 'SO2_IN'
     # 'COM7': 'TEMP_1',
     # 'COM8': 'CO2_OUT',
     # 'COM9': 'NO2_OUT',
