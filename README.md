@@ -9,7 +9,7 @@ El diseño de este sistema permite la integración de sensores adicionales* a me
 
 Dependencias:
 
-pip install pymodbus, pyserialD
+pip install pymodbus, pyserial
 
 Añadir script al arranque (Windows)
 shell:startup

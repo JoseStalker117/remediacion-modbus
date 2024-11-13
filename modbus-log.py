@@ -18,7 +18,7 @@ DB_NAME = "C:/SQLite/remediacion_2024.db"
 # Tiempo asignado para añadir registro a la tabla
 t_registro = 60
 # Tiempo asignado para el muestreo de datos en consola
-t_muestreo = 2
+t_muestreo = 10
 
 
 detener_hilos = False

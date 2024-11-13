@@ -71,8 +71,7 @@ def query_between_dates(database, start_date, end_date, csv_filename):
 
 #------------------------------------Tkinter Window------------------------------------#
 OUTPUT_PATH = Path(__file__).parent
-#TODO: cambiar a una dirección raiz del disco (Assets).
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\josef\Desktop\Nueva carpeta\build\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH / Path(os.getcwd() + r"\assets")
 
 
 def relative_to_assets(path: str) -> Path:
