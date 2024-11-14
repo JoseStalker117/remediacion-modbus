@@ -7,6 +7,12 @@ import csv
 from datetime import datetime
 import os
 
+timestamp = datetime.now()
+DB_NAME = "C:/SQLite/remediacion_2024.db"
+csv_filename = now.strftime("%m/%d/%Y")
+desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+full_csv_path = os.path.join(desktop_path, csv_filename)
+
 
 # <<<--- Adaptadores de Timestamp SQLite --->>>
 
@@ -21,27 +27,44 @@ sqlite3.register_converter('DATETIME', convert_datetime)
 
 
 # Función que exporta la consulta que retorna la DB, requiere el objeto resultante de la DB y el DIR donde se almacenará el archivo
-def export_to_csv(query_result, csv_filename):
-    with open(csv_filename, 'w', newline='') as csvfile:
+def export_to_csv(query_result):
+    with open(full_csv_path, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=';')
         # Esta linea escribe los encabezados de la tabla a través del "query_result.description"
         csv_writer.writerow([i[0] for i in query_result.description])
         # Iteracción que escribe todos los registros encontrados en la búsqueda.
         csv_writer.writerows(query_result.fetchall())
-    #TODO: añadir una ventana de confirmación tipo tkinter.
-    print(f'Archivo CSV guardado como {csv_filename}')
+    messagebox.showinfo("OK", "Archivo generado " +csv_filename+ " en: " +desktop_path)
 
 
-# Función para obtener la ruta del escritorio del usuario
-def get_desktop_path():
-    return os.path.join(os.path.expanduser("~"), "Desktop")
+# Función para realizar la consulta entera de la tabla
+def query_full():
+    try:
+        conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
+        cursor = conn.cursor()
+
+        # Adaptador de marca de tiempo SQLite
+        start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+
+        query = '''SELECT * FROM sensor_logs'''
+        cursor.execute(query)        
+
+        # Ejecutar la función de exportar archivo
+        export_to_csv(cursor)
+    
+    #Manejo de excepción en caso de un error.
+    except sqlite3.Error as e:
+        print(f"Error al conectar con la base de datos: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 # Función para realizar la consulta entre dos fechas
-#TODO: crear variables database y csv_filename como globales para acceder a ellas en la función
-def query_between_dates(database, start_date, end_date, csv_filename):
+def query_between_dates(start_date, end_date):
     try:
-        conn = sqlite3.connect(database, detect_types=sqlite3.PARSE_DECLTYPES)
+        conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
         cursor = conn.cursor()
 
         # Adaptador de marca de tiempo SQLite
@@ -50,14 +73,10 @@ def query_between_dates(database, start_date, end_date, csv_filename):
 
         # Query SQLite entre las fechas seleccionadas
         query = '''SELECT * FROM sensor_logs WHERE timestamp BETWEEN ? AND ? '''
-        cursor.execute(query, (start_date, end_date))
-
-        #TODO: pasar a como variable global.
-        desktop_path = get_desktop_path()
-        full_csv_path = os.path.join(desktop_path, csv_filename)
+        cursor.execute(query, (start_date, end_date))        
 
         # Ejecutar la función de exportar archivo
-        export_to_csv(cursor, full_csv_path)
+        export_to_csv(cursor)
     
     #Manejo de excepción en caso de un error.
     except sqlite3.Error as e:
@@ -135,7 +154,7 @@ button_1 = Button(
     image=button_image_1,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_1 clicked"),
+    command= query_full,
     relief="flat"
 )
 button_1.place(
@@ -151,7 +170,7 @@ button_2 = Button(
     image=button_image_2,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_2 clicked"),
+    command=lambda: query_between_dates(d1, d2),
     relief="flat"
 )
 button_2.place(
