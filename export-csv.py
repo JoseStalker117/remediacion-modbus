@@ -1,7 +1,8 @@
-#TODO: añadir assets al git
-
 from pathlib import Path
 from tkinter import *
+import tkinter as tk
+from tkinter import messagebox
+from tkcalendar import DateEntry
 import sqlite3
 import csv
 from datetime import datetime
@@ -9,7 +10,8 @@ import os
 
 timestamp = datetime.now()
 DB_NAME = "C:/SQLite/remediacion_2024.db"
-csv_filename = now.strftime("%m/%d/%Y")
+csv_filename = timestamp.strftime("%m-%d-%Y")
+csv_filename = csv_filename + ".csv"
 desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
 full_csv_path = os.path.join(desktop_path, csv_filename)
 
@@ -35,6 +37,7 @@ def export_to_csv(query_result):
         # Iteracción que escribe todos los registros encontrados en la búsqueda.
         csv_writer.writerows(query_result.fetchall())
     messagebox.showinfo("OK", "Archivo generado " +csv_filename+ " en: " +desktop_path)
+    
 
 
 # Función para realizar la consulta entera de la tabla
@@ -42,10 +45,6 @@ def query_full():
     try:
         conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
         cursor = conn.cursor()
-
-        # Adaptador de marca de tiempo SQLite
-        start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-        end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
 
         query = '''SELECT * FROM sensor_logs'''
         cursor.execute(query)        
@@ -62,30 +61,37 @@ def query_full():
 
 
 # Función para realizar la consulta entre dos fechas
-def query_between_dates(start_date, end_date):
-    try:
-        conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
-        cursor = conn.cursor()
+def query_between_dates():
+    if inicio_entry.get_date() <= fin_entry.get_date():
+        try:
+            start_date = inicio_entry.get_date()
+            end_date = fin_entry.get_date()
+            
+            conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
+            cursor = conn.cursor()
 
-        # Adaptador de marca de tiempo SQLite
-        start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-        end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+            # Adaptador de marca de tiempo SQLite
+            # start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+            # end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
 
-        # Query SQLite entre las fechas seleccionadas
-        query = '''SELECT * FROM sensor_logs WHERE timestamp BETWEEN ? AND ? '''
-        cursor.execute(query, (start_date, end_date))        
+            # Query SQLite entre las fechas seleccionadas
+            query = '''SELECT * FROM sensor_logs WHERE timestamp BETWEEN ? AND ? '''
+            cursor.execute(query, (start_date, end_date))        
 
-        # Ejecutar la función de exportar archivo
-        export_to_csv(cursor)
+            # Ejecutar la función de exportar archivo
+            export_to_csv(cursor)
     
-    #Manejo de excepción en caso de un error.
-    except sqlite3.Error as e:
-        print(f"Error al conectar con la base de datos: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-
+        #Manejo de excepción en caso de un error.
+        except sqlite3.Error as e:
+            print(f"Error al conectar con la base de datos: {e}")
+        finally:
+            if conn:
+                conn.close()
+                
+    else:
+        messagebox.showinfo("ERROR", "Formato de fecha no válido, fecha inicial debe ser mayor a la fecha final.")
+                    
+        
 
 
 #------------------------------------Tkinter Window------------------------------------#
@@ -132,21 +138,63 @@ canvas.create_text(
     font=("Inter", 14 * -1)
 )
 
+#Widget 1
+canvas.create_text(
+    60.0,
+    140.0,
+    anchor="nw",
+    text="Texto 1",
+    fill="#000000",
+    font=("Inter", 14 * -1)
+)
+
 image_image_1 = PhotoImage(
     file=relative_to_assets("image_1.png"))
 image_1 = canvas.create_image(
     175.0,
-    186.0,
+    180.0,
     image=image_image_1
+)
+
+inicio_entry = DateEntry(
+    window,
+    width=24,
+    font=("Inter", 12),
+    background="darkblue",
+    foreground="white",
+    borderwidth=2,
+    date_pattern="yyyy-mm-dd"
+)
+canvas.create_window(192, 180, window=inicio_entry)
+
+#Widget 2
+canvas.create_text(
+    60.0,
+    220.0,
+    anchor="nw",
+    text="Texto 2",
+    fill="#000000",
+    font=("Inter", 14 * -1)
 )
 
 image_image_2 = PhotoImage(
     file=relative_to_assets("image_2.png"))
 image_2 = canvas.create_image(
     175.0,
-    262.0,
+    260.0,
     image=image_image_2
 )
+
+fin_entry = DateEntry(
+    window,
+    width=24,
+    font=("Inter", 12),
+    background="darkblue",
+    foreground="white",
+    borderwidth=2,
+    date_pattern="yyyy-mm-dd"
+)
+canvas.create_window(192, 260, window=fin_entry)
 
 button_image_1 = PhotoImage(
     file=relative_to_assets("button_1.png"))
@@ -170,7 +218,7 @@ button_2 = Button(
     image=button_image_2,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: query_between_dates(d1, d2),
+    command= query_between_dates,
     relief="flat"
 )
 button_2.place(
