@@ -31,6 +31,7 @@ sqlite3.register_converter('DATETIME', convert_datetime)
 # Función que exporta la consulta que retorna la DB, requiere el objeto resultante de la DB y el DIR donde se almacenará el archivo
 def export_to_csv(query_result):
     with open(full_csv_path, 'w', newline='') as csvfile:
+        #NOTE: Cambiar el delimitador a "," o ";" dependiendo de la distribución de Office
         csv_writer = csv.writer(csvfile, delimiter=';')
         # Esta linea escribe los encabezados de la tabla a través del "query_result.description"
         csv_writer.writerow([i[0] for i in query_result.description])
@@ -101,7 +102,6 @@ ASSETS_PATH = OUTPUT_PATH / Path(os.getcwd() + r"\assets")
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
-
 
 window = Tk()
 window.geometry("350x400")

@@ -94,7 +94,7 @@ def read_modbus(port, baudrate, nombre_dispositivo, lecturas):
 
             while not detener_hilos:
                 try:
-                    result = client.read_holding_registers(0, 11, slave=1)
+                    result = client.read_holding_registers(0, 2, slave=1)
                     if result.isError():
                         print(f"[Modbus] Error en {nombre_dispositivo}: {result}")
                     else:
