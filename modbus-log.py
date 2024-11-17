@@ -81,10 +81,10 @@ def insertar_lecturas():
 Puerto que determina la dirección COM donde se establece la conexión
 Nombre este es meramente indicativo para poder identificar los puertos y valores que se rastrean
 Lecturas lista temporal para mostrar en consola las lecturas en tiempo real'''
-def read_modbus(port, nombre_dispositivo, lecturas):
+def read_modbus(port, baudrate, nombre_dispositivo, lecturas):
     while not detener_hilos:
         try:
-            client = ModbusSerialClient(port=port, baudrate=4800, timeout=1)
+            client = ModbusSerialClient(port=port, baudrate=baudrate, timeout=1)
             if not client.connect():
                 print(f"[PySerial] No se pudo conectar a {nombre_dispositivo} ({port}).")
                 time.sleep(5)
@@ -157,15 +157,20 @@ init_db()
 time.sleep(2)
 
 # Lista global de los dispositivos conectados al ordenador, aqui se modifica la dirección COM que se encuentra el sensor.
+# Dispositivos con un protocolo baudrate de 4800
 dispositivos = {
     'COM4': 'CO2_IN',
     'COM5': 'NO2_IN',
-    'COM3': 'SO2_IN'
-    # 'COM7': 'TEMP_1',
-    # 'COM8': 'CO2_OUT',
-    # 'COM9': 'NO2_OUT',
-    # 'COM10': 'SO2_OUT',
-    # 'COM11': 'TEMP_2'
+    'COM3': 'SO2_IN',
+    'COM8': 'CO2_OUT',
+    'COM9': 'NO2_OUT',
+    'COM10': 'SO2_OUT'
+}
+
+# Dispositivos con un protocolo baudrate de 9600
+dispositivos2 = {
+    'COM7': 'TEMP_1',
+    'COM11': 'TEMP_2'
 }
 
 # Lista global de las lecturas recibidas en tiempo real
@@ -177,11 +182,18 @@ hilos = []
 
 # Se recorre la lista dispositivos y se genera una instancia thread para cada uno repitiendo el método "read_modbus"
 for puerto, nombre in dispositivos.items():
-    hilo = threading.Thread(target=read_modbus, args=(puerto, nombre, lecturas))
+    hilo = threading.Thread(target=read_modbus, args=(puerto, 4800, nombre, lecturas))
     hilo.start()
     hilos.append(hilo)
-
-# Se define un nuevo hilo controlador de "recolectar_lecturas" para insertar los registros a la tabla
+    
+    
+for puerto, nombre in dispositivos2.items():
+    hilo = threading.Thread(target=read_modbus, args=(puerto, 9600, nombre, lecturas))
+    hilo.start()
+    hilos.append(hilo)
+    
+    
+# Se define un nuevo hilo controlador de "recolectar_lecturas" para recolectar los registros
 hilo_recolector = threading.Thread(target=recolectar_lecturas, args=(lecturas,))
 hilo_recolector.start()
 hilos.append(hilo_recolector)
