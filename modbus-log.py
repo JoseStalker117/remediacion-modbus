@@ -16,7 +16,7 @@ from datetime import datetime
 DB_NAME = "C:/SQLite/remediacion_2024.db"
 
 # Tiempo asignado para añadir registro a la tabla
-t_registro = 60
+t_registro = 5
 # Tiempo asignado para el muestreo de datos en consola
 t_muestreo = 10
 
@@ -99,7 +99,7 @@ def read_modbus(port, baudrate, nombre_dispositivo, lecturas):
                         print(f"[Modbus] Error en {nombre_dispositivo}: {result}")
                     else:
                         primer_registro = result.registers[0]
-                        print(f"[Modbus] {nombre_dispositivo}: {primer_registro}")
+                        #print(f"[Modbus] {nombre_dispositivo}: {primer_registro}")
 
                         with lock:
                             lecturas[nombre_dispositivo] = primer_registro  
@@ -131,7 +131,7 @@ def recolectar_lecturas(lecturas):
                 lecturas.get('SO2_IN', None),
                 lecturas.get('TEMP_1', None),
                 lecturas.get('CO2_OUT', None),
-                lecturas.get('CO2_OUT', None),
+                lecturas.get('NO2_OUT', None),
                 lecturas.get('SO2_OUT', None),
                 lecturas.get('TEMP_2', None)
             ]
@@ -159,18 +159,18 @@ time.sleep(2)
 # Lista global de los dispositivos conectados al ordenador, aqui se modifica la dirección COM que se encuentra el sensor.
 # Dispositivos con un protocolo baudrate de 4800
 dispositivos = {
-    'COM4': 'CO2_IN',
-    'COM5': 'NO2_IN',
-    'COM3': 'SO2_IN',
-    'COM8': 'CO2_OUT',
-    'COM9': 'NO2_OUT',
-    'COM10': 'SO2_OUT'
+    'COM7': 'CO2_IN',
+    'COM8': 'NO2_IN',
+    'COM6': 'SO2_IN',
+    'COM12': 'CO2_OUT',
+    'COM10': 'NO2_OUT',
+    'COM11': 'SO2_OUT'
 }
 
 # Dispositivos con un protocolo baudrate de 9600
 dispositivos2 = {
-    'COM7': 'TEMP_1',
-    'COM11': 'TEMP_2'
+    'COM9': 'TEMP_1',
+    'COM13': 'TEMP_2'
 }
 
 # Lista global de las lecturas recibidas en tiempo real

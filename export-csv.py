@@ -32,7 +32,7 @@ sqlite3.register_converter('DATETIME', convert_datetime)
 def export_to_csv(query_result):
     with open(full_csv_path, 'w', newline='') as csvfile:
         #NOTE: Cambiar el delimitador a "," o ";" dependiendo de la distribución de Office
-        csv_writer = csv.writer(csvfile, delimiter=';')
+        csv_writer = csv.writer(csvfile, delimiter=',')
         # Esta linea escribe los encabezados de la tabla a través del "query_result.description"
         csv_writer.writerow([i[0] for i in query_result.description])
         # Iteracción que escribe todos los registros encontrados en la búsqueda.
