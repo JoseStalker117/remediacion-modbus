@@ -31,10 +31,11 @@ sqlite3.register_converter("DATETIME", lambda s: datetime.strptime(s.decode(), "
 # Este método realiza la conectividad de SQLite y crea la tabla "sensor_logs" en caso de que no exista
 # En caso de querer modificar las cabeceras de la tabla realizarlo en este apartado (restableciendo el archivo de la db)
 def init_db():
-    conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS sensor_logs (
+    try:
+        conn = sqlite3.connect(DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sensor_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp DATETIME,
             CO2_IN INTEGER,
@@ -45,11 +46,13 @@ def init_db():
             NO2_OUT INTEGER,
             SO2_OUT INTEGER,
             TEMP_2 INTEGER
-        )
-    """)
-    conn.commit()
-    print("[SQLite] Conexión a la base de datos realizada con éxito.")
-    conn.close()
+            )""")
+        conn.commit()
+        print("[SQLite] Conexión a la base de datos realizada con éxito.")
+        conn.close()
+    except Exception as e:
+        print(f"[SQLite] Direcctorio no localizado: {e}")
+        input()
 
 
 # Insertar lecturas, como su nombre indica recolecta los registros de los puertos y los inserta como un nuevo registro de la tabla.
@@ -84,7 +87,7 @@ Lecturas lista temporal para mostrar en consola las lecturas en tiempo real'''
 def read_modbus(port, baudrate, nombre_dispositivo, lecturas):
     while not detener_hilos:
         try:
-            client = ModbusSerialClient(port=port, baudrate=baudrate, timeout=1)
+            client = ModbusSerialClient(port=port, baudrate=baudrate, parity='N', stopbits=1, bytesize=8, timeout=1)
             if not client.connect():
                 print(f"[PySerial] No se pudo conectar a {nombre_dispositivo} ({port}).")
                 time.sleep(5)
