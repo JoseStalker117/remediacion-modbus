@@ -106,7 +106,7 @@ def relative_to_assets(path: str) -> Path:
 window = Tk()
 window.geometry("350x400")
 window.configure(bg = "#FFFFFF")
-
+window.title("Remediacion 2024")
 
 canvas = Canvas(
     window,
@@ -197,8 +197,8 @@ canvas.create_window(192, 260, window=fin_entry)
 
 #Radio buttons
 delimitador = tk.StringVar(value=",")
-radio1 = tk.Radiobutton(window, text="Español ','", variable=delimitador, value=",")
-radio2 = tk.Radiobutton(window, text="Inglés ';'", variable=delimitador, value=";")
+radio1 = tk.Radiobutton(window, background="white", text="Español ','", variable=delimitador, value=",")
+radio2 = tk.Radiobutton(window, background="white", text="Inglés ';'", variable=delimitador, value=";")
 
 canvas.create_text(
     30.0,
@@ -248,5 +248,7 @@ button_2.place(
     width=100.0,
     height=40.0
 )
+
+
 window.resizable(False, False)
 window.mainloop()
