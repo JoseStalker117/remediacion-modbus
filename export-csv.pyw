@@ -31,8 +31,8 @@ sqlite3.register_converter('DATETIME', convert_datetime)
 # Función que exporta la consulta que retorna la DB, requiere el objeto resultante de la DB y el DIR donde se almacenará el archivo
 def export_to_csv(query_result):
     with open(full_csv_path, 'w', newline='') as csvfile:
-        #NOTE: Cambiar el delimitador a "," o ";" dependiendo de la distribución de Office
-        csv_writer = csv.writer(csvfile, delimiter=';')
+        #NOTE: Cambiar el delimitador a "," o ";" dependiendo de la distribución de idioma de Office
+        csv_writer = csv.writer(csvfile, delimiter=delimitador.get())
         # Esta linea escribe los encabezados de la tabla a través del "query_result.description"
         csv_writer.writerow([i[0] for i in query_result.description])
         # Iteracción que escribe todos los registros encontrados en la búsqueda.
@@ -106,7 +106,7 @@ def relative_to_assets(path: str) -> Path:
 window = Tk()
 window.geometry("350x400")
 window.configure(bg = "#FFFFFF")
-
+window.title("Remediacion 2024")
 
 canvas = Canvas(
     window,
@@ -132,17 +132,17 @@ canvas.create_text(
     34.0,
     61.0,
     anchor="nw",
-    text="Selecciona el rango de fechas que desea\ngenerar o presione el segundo botón para \nexportar todos los registros",
+    text="Selecciona el rango de fechas que desea\ngenerar o presione el segundo botón para \nexportar todos los registros.",
     fill="#000000",
     font=("Inter", 14 * -1)
 )
 
 #Widget 1
 canvas.create_text(
-    60.0,
+    75.0,
     140.0,
     anchor="nw",
-    text="Texto 1",
+    text="Fecha de inicio",
     fill="#000000",
     font=("Inter", 14 * -1)
 )
@@ -168,10 +168,10 @@ canvas.create_window(192, 180, window=inicio_entry)
 
 #Widget 2
 canvas.create_text(
-    60.0,
+    75.0,
     220.0,
     anchor="nw",
-    text="Texto 2",
+    text="Fecha de fin",
     fill="#000000",
     font=("Inter", 14 * -1)
 )
@@ -195,6 +195,28 @@ fin_entry = DateEntry(
 )
 canvas.create_window(192, 260, window=fin_entry)
 
+#Radio buttons
+delimitador = tk.StringVar(value=",")
+radio1 = tk.Radiobutton(window, background="white", text="Español ','", variable=delimitador, value=",")
+radio2 = tk.Radiobutton(window, background="white", text="Inglés ';'", variable=delimitador, value=";")
+
+canvas.create_text(
+    30.0,
+    300.0,
+    anchor="nw",
+    text="Delimitador:",
+    fill="#000000",
+    font=("Inter", 14 * -1)
+)
+
+radio1.place(
+    x=115.0,
+    y=300.0)
+
+radio2.place(
+    x=220.0,
+    y=300.0)
+
 button_image_1 = PhotoImage(
     file=relative_to_assets("button_1.png"))
 button_1 = Button(
@@ -206,7 +228,7 @@ button_1 = Button(
 )
 button_1.place(
     x=34.0,
-    y=316.0,
+    y=340.0,
     width=100.0,
     height=40.0
 )
@@ -222,9 +244,11 @@ button_2 = Button(
 )
 button_2.place(
     x=216.0,
-    y=316.0,
+    y=340.0,
     width=100.0,
     height=40.0
 )
+
+
 window.resizable(False, False)
 window.mainloop()
