@@ -9,6 +9,8 @@ import time
 import sqlite3
 from datetime import datetime
 import threading
+import os
+import csv
 
 #Introducir aquí la dirección de la base de datos
 Dir_DB = "C:/SQLite/remediacion_2024.db"
@@ -61,7 +63,9 @@ def Dispositivos(lista, puerto, nombre, baudrate, paridad):
 
 def Transmisores(sensor):
     client = None
+    conectado = False
     while True:
+        time.sleep(t_muestreo)
         try:
             if not client:
                 client = ModbusSerialClient(port=sensor['Puerto'], 
@@ -70,12 +74,17 @@ def Transmisores(sensor):
                                             stopbits=1, 
                                             bytesize=8, 
                                             timeout=3)
+                
             if not client.connect():
-                print(f"[PySerial] No se pudo conectar al puerto {sensor['Puerto']}-{sensor['Nombre']}")
+                if conectado:
+                    print(f"[PySerial] No se pudo conectar al puerto {sensor['Puerto']}-{sensor['Nombre']}")
+                    conectado = False
                 time.sleep(2)
                 continue
-                        
-            print(f"[PySerial] Conectado al puerto {sensor['Puerto']}-{sensor['Nombre']}.")
+            
+            if not conectado:
+                print(f"[PySerial] Conectado al puerto {sensor['Puerto']}-{sensor['Nombre']}.")
+                conectado = True
 
             result = client.read_holding_registers(0)
             if result.isError():
@@ -91,46 +100,83 @@ def Transmisores(sensor):
             if client:
                 client.close()
                 client = None
-            time.sleep(t_muestreo)
+            
 
 
-def Querry():
-    try:
-        conn = sqlite3.connect(Dir_DB)
-        cursor = conn.cursor()
-        timestamp = datetime.now()
-
-        # Extraer los nombres de los sensores y sus valores dentro del bloque protegido
+def ImprimirRegistros():
+    while True:
+        time.sleep(t_muestreo)
         with lock:
-            datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
-
-        columnas = ", ".join(datos.keys())
-        valores_placeholder = ", ".join(["?"] * len(datos))
-        query = f"""
-        INSERT INTO sensor_logs (timestamp, {columnas})
-        VALUES (?, {valores_placeholder})
-        """
+            print(f"[Registros] Estado actual: {registros}")
         
-        valores = [timestamp] + list(datos.values())
+        
+        
+def Querry():
+    while True:
+        time.sleep(t_registro * 60)
+        try:
+            conn = sqlite3.connect(Dir_DB)
+            cursor = conn.cursor()
+            timestamp = datetime.now()
 
-        cursor.execute(query, valores)
-        conn.commit()
-        print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
+            with lock:
+                datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
 
-    except sqlite3.Error as e:
-        print(f"[SQLite] Error al insertar datos: {e}")
-    
-    except Exception as e:
-        print(f"[Python] Error inesperado: {e}")
+            # Verificar si hay datos para insertar
+            if not datos:
+                print(f"[SQLite] No hay datos para registrar en {timestamp}.")
+            else:
+                columnas = ", ".join(datos.keys())
+                valores_placeholder = ", ".join(["?"] * len(datos))
+                query = f"""
+                INSERT INTO sensor_logs (timestamp, {columnas})
+                VALUES (?, {valores_placeholder})
+                """
+                valores = [timestamp] + list(datos.values())
 
-    finally: 
-        if conn:
-            try:
+                cursor.execute(query, valores)
+                conn.commit()
+                print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
+                ExportarCSV()
+
+        except sqlite3.Error as e:
+            print(f"[SQLite] Error al insertar datos: {e}")
+
+        except Exception as e:
+            print(f"[Python] Error inesperado: {e}")
+
+        finally:
+            if conn:
                 conn.close()
-            except Exception as e:
-                print(f"[SQLite] Error al cerrar la conexión: {e}")
-                
-    time.sleep(t_registro * 60)
+
+
+def ExportarCSV():
+    archivo_actual = None
+    escritor = None
+
+    try:
+        fecha_actual = datetime.now().strftime("%Y-%m-%d")
+        archivo_csv = os.path.join(Dir_CSV, f"{fecha_actual}.csv")
+
+        if archivo_csv != archivo_actual:
+            archivo_actual = archivo_csv
+            nuevo_archivo = not os.path.exists(archivo_csv)
+
+            with open(archivo_csv, mode="w" if nuevo_archivo else "a", newline="") as archivo:
+                #Aquí se encuentra el delimitador de archivo
+                escritor = csv.writer(archivo, delimiter=';')
+                if nuevo_archivo:
+                    encabezados = ["timestamp"] + list(registros.keys())
+                    escritor.writerow(encabezados)
+
+                with lock:
+                    if registros:
+                        fila = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")] + [registro["Valor"] for registro in registros.values()]
+                        escritor.writerow(fila)
+                        print(f"[CSV] Datos exportados: {fila}")
+
+    except Exception as e:
+        print(f"[CSV] Error al exportar datos: {e}")
 
 
 # *****************************************************INICIO DE EJECUCIÓN*****************************************************
@@ -172,6 +218,11 @@ for sensor in Sensores:
     thread = threading.Thread(target=Transmisores, args=(sensor,))
     threads.append(thread)
     thread.start()
+
+#Hilo de Muestreo
+thread = threading.Thread(target=ImprimirRegistros)
+threads.append(thread)
+thread.start()
 
 #Hilos de Querry
 thread = threading.Thread(target=Querry)
