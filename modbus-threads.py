@@ -47,10 +47,10 @@ def Database(db):
                 PAR INTEGER
             )""")
         conn.commit()
-        print("[SQLite] Conexión a la base de datos realizada con éxito.")
+        print("\n[SQLite] Conexión a la base de datos realizada con éxito.\n")
         
     except Exception as e:
-        print(f"[SQLite] Error al crear el archivo de SQLite. {e}")
+        print(f"[SQLite] Error al crear el archivo de SQLite. {e}\n")
         
     finally:
         if conn:
@@ -73,7 +73,7 @@ def Transmisores(sensor):
                                             parity=sensor['Paridad'], 
                                             stopbits=1, 
                                             bytesize=8, 
-                                            timeout=3)
+                                            timeout=1)
                 
             if not client.connect():
                 if conectado:
@@ -151,32 +151,46 @@ def Querry():
 
 
 def ExportarCSV():
-    archivo_actual = None
-    escritor = None
-
     try:
+        # Obtener la fecha actual en formato YYYY-MM-DD
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
         archivo_csv = os.path.join(Dir_CSV, f"{fecha_actual}.csv")
 
-        if archivo_csv != archivo_actual:
-            archivo_actual = archivo_csv
-            nuevo_archivo = not os.path.exists(archivo_csv)
+        # Conectar a la base de datos SQLite
+        conn = sqlite3.connect(Dir_DB)
+        cursor = conn.cursor()
 
-            with open(archivo_csv, mode="w" if nuevo_archivo else "a", newline="") as archivo:
-                #Aquí se encuentra el delimitador de archivo
-                escritor = csv.writer(archivo, delimiter=';')
-                if nuevo_archivo:
-                    encabezados = ["timestamp"] + list(registros.keys())
-                    escritor.writerow(encabezados)
+        # Consulta para obtener todos los datos del día actual
+        consulta = f"""
+            SELECT * FROM sensor_logs
+            WHERE DATE(timestamp) = ?
+        """
+        cursor.execute(consulta, (fecha_actual,))
+        filas = cursor.fetchall()
 
-                with lock:
-                    if registros:
-                        fila = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")] + [registro["Valor"] for registro in registros.values()]
-                        escritor.writerow(fila)
-                        print(f"[CSV] Datos exportados: {fila}")
+        # Obtener los nombres de las columnas
+        columnas = [descripcion[0] for descripcion in cursor.description]
+
+        # Escribir el archivo CSV
+        with open(archivo_csv, mode="w", newline="") as archivo:
+            escritor = csv.writer(archivo, delimiter=',')
+            
+            # Escribir encabezados
+            escritor.writerow(columnas)
+
+            # Escribir los datos
+            escritor.writerows(filas)
+            print(f"[CSV] Datos exportados a {archivo_csv} con {len(filas)} registros.")
+
+    except sqlite3.Error as e:
+        print(f"[SQLite] Error al consultar la base de datos: {e}")
 
     except Exception as e:
         print(f"[CSV] Error al exportar datos: {e}")
+
+    finally:
+        if conn:
+            conn.close()
 
 
 # *****************************************************INICIO DE EJECUCIÓN*****************************************************
@@ -187,7 +201,7 @@ print('''------------------------------------------------------------------
       
             Para detener el proceso cierre la ventana
 ------------------------------------------------------------------''')
-time.sleep(3)
+time.sleep(10)
 
 Database(Dir_DB)
 
@@ -195,17 +209,17 @@ Database(Dir_DB)
 Sensores = []
 
 #-----Conjunto 1 de transmisores-----
-Dispositivos(Sensores, 'COM1', 'CO2_IN', 4800, 'N')
-Dispositivos(Sensores, 'COM2', 'NO2_IN', 4800, 'N')
-Dispositivos(Sensores, 'COM9', 'SO2_IN', 4800, 'N')
-Dispositivos(Sensores, 'COM10', 'TEMP_1', 9600, 'E')
+Dispositivos(Sensores, 'COM8', 'CO2_IN', 4800, 'N')
+Dispositivos(Sensores, 'COM9', 'NO2_IN', 4800, 'N')
+Dispositivos(Sensores, 'COM10', 'SO2_IN', 4800, 'N')
+Dispositivos(Sensores, 'COM7', 'TEMP_1', 9600, 'N')
 #-----Conjunto 2 de transmisores-----
 Dispositivos(Sensores, 'COM11', 'CO2_OUT', 4800, 'N')
 Dispositivos(Sensores, 'COM12', 'NO2_OUT', 4800, 'N')
 Dispositivos(Sensores, 'COM13', 'SO2_OUT', 4800, 'N')
-Dispositivos(Sensores, 'COM14', 'TEMP_2', 9600, 'E')
+Dispositivos(Sensores, 'COM14', 'TEMP_2', 9600, 'N')
 #-----Sensor de Radiación fotosintética-----
-Dispositivos(Sensores, 'COM15', 'PAR', 4800, 'N')
+Dispositivos(Sensores, 'COM19', 'PAR', 4800, 'N')
 
 
 registros = {}
