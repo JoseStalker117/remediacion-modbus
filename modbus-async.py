@@ -4,6 +4,9 @@ from datetime import datetime
 import os
 import csv
 from pymodbus.client import ModbusSerialClient
+import pyrebase
+import firebaseadmin
+
 
 # Introducir aquí la dirección de la base de datos
 Dir_DB = "C:/SQLite/remediacion_2024.db"
@@ -15,7 +18,7 @@ Dir_CSV = "D:/"
 t_muestreo = 10
 
 # Tiempo para enviar la información a la base de datos (minutos).
-t_registro = 10
+t_registro = 1
 
 
 sqlite3.register_adapter(datetime, lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S"))
@@ -89,7 +92,7 @@ async def ImprimirRegistros(registros):
         print(f"\n[Registros] Estado actual: {registros}\n")
         
                             
-async def Querry(registros):
+async def Querry(registros, user):
     while True:
         await asyncio.sleep(t_registro * 60)
         try:
@@ -113,6 +116,7 @@ async def Querry(registros):
                 cursor.execute(query, valores)
                 conn.commit()
                 print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
+                firebaseadmin.write_data(user, registros)
                 await ExportarCSV()
 
         except sqlite3.Error as e:
@@ -177,7 +181,8 @@ async def main():
             Para detener el proceso cierre la ventana
 ------------------------------------------------------------------''')
     await asyncio.sleep(10)
-
+    
+    user = firebaseadmin.login("admin@bioinsight.com", "admin123456")
     Database(Dir_DB)
 
     # Lista global con los sensores a monitorear.
@@ -209,7 +214,7 @@ async def main():
     tareas.append(ImprimirRegistros(registros))
 
     # Tarea de Querry
-    tareas.append(Querry(registros))
+    tareas.append(Querry(registros, user))
 
     await asyncio.gather(*tareas)
 
