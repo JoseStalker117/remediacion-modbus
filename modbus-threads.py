@@ -40,7 +40,7 @@ def Database(db):
 
 def Querry():
     while True:
-        time.sleep(os.getenv(int("t_registro")) * 60)
+        time.sleep(int(os.getenv("t_registro")) * 60)
         try:
             conn = sqlite3.connect(os.getenv("DB_PATH"))
             cursor = conn.cursor()
@@ -87,7 +87,7 @@ def Transmisores(sensor):
     client = None
     conectado = False
     while True:
-        time.sleep(os.getenv(int("t_muestreo")))
+        time.sleep(int(os.getenv("t_muestreo")))
         try:
             if not client:
                 client = ModbusSerialClient(port=sensor['Puerto'], 
@@ -125,7 +125,7 @@ def Transmisores(sensor):
             
 def ImprimirRegistros():
     while True:
-        time.sleep(os.getenv(int("t_muestreo")))
+        time.sleep(int(os.getenv("t_muestreo")))
         with lock:
             print("\n[Registros] Estado actual:")
             for nombre, datos in registros.items():

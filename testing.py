@@ -14,6 +14,7 @@ class CalendarPlotsApp:
         self.root.title("Selector de Semana y Análisis de Datos")
         self.root.geometry("1400x800")
         self.root.configure(bg='#f0f0f0')
+        self.root.state("zoomed")
         
         # Variables para almacenar datos
         self.selected_week_start = None
