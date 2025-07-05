@@ -1,30 +1,12 @@
-'''----------------Antes de modificar----------------
-Este script está realizado para el laboratorio de Remediación perteneciente a la Facultad de Agronomia UANL
-El funcionamiento de este es mayormente por la librería de 'pymodbus' el cual realiza la conectividad a un
-puerto COM recuperando el valor deseado del sensor alojadas en su protocolo de comunicación.
---------------------------------------------------'''
-
+import sqlite3, threading, os, csv ,firebaseadmin, time
 from pymodbus.client import ModbusSerialClient
-import time
-import sqlite3
+from dotenv import load_dotenv
 from datetime import datetime
-import threading
-import os
-import csv
 
-#Introducir aquí la dirección de la base de datos
-Dir_DB = "C:/SQLite/remediacion_2024.db"
+# Carga las variables globales o configuraciones
+load_dotenv("config.env")
 
-#Directorio a exportar los archivos csv (Tarjeta SD)
-Dir_CSV = "D:/"
-
-#Tiempo para imprimir la información en consola (segundos).
-t_muestreo = 10
-
-#Tiempo para enviar la información a la base de datos (minutos).
-t_registro = 10
-
-
+# FUNCIONES SQLite3
 sqlite3.register_adapter(datetime, lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S"))
 sqlite3.register_converter("DATETIME", lambda s: datetime.strptime(s.decode(), "%Y-%m-%d %H:%M:%S"))
 
@@ -56,7 +38,47 @@ def Database(db):
         if conn:
             conn.close()
 
+def Querry():
+    while True:
+        time.sleep(os.getenv(int("t_registro")) * 60)
+        try:
+            conn = sqlite3.connect(os.getenv("DB_PATH"))
+            cursor = conn.cursor()
+            timestamp = datetime.now()
 
+            with lock:
+                datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
+
+            # Verificar si hay datos para insertar
+            if not datos:
+                print(f"[SQLite] No hay datos para registrar en {timestamp}.")
+            else:
+                columnas = ", ".join(datos.keys())
+                valores_placeholder = ", ".join(["?"] * len(datos))
+                query = f"""
+                INSERT INTO sensor_logs (timestamp, {columnas})
+                VALUES (?, {valores_placeholder})
+                """
+                valores = [timestamp] + list(datos.values())
+
+                cursor.execute(query, valores)
+                conn.commit()
+                print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
+                firebaseadmin.write_data(registros)
+                ExportarCSV()
+
+        except sqlite3.Error as e:
+            print(f"[SQLite] Error al insertar datos: {e}")
+
+        except Exception as e:
+            print(f"[Python] Error inesperado: {e}")
+
+        finally:
+            if conn:
+                conn.close()
+   
+                
+# Dispositivos Modbus
 def Dispositivos(lista, puerto, nombre, baudrate, paridad):
     lista.append({"Puerto": puerto, "Nombre": nombre, "Baudrate": baudrate, "Paridad": paridad})
     
@@ -65,7 +87,7 @@ def Transmisores(sensor):
     client = None
     conectado = False
     while True:
-        time.sleep(t_muestreo)
+        time.sleep(os.getenv(int("t_muestreo")))
         try:
             if not client:
                 client = ModbusSerialClient(port=sensor['Puerto'], 
@@ -101,63 +123,25 @@ def Transmisores(sensor):
                 client.close()
                 client = None
             
-
-
 def ImprimirRegistros():
     while True:
-        time.sleep(t_muestreo)
+        time.sleep(os.getenv(int("t_muestreo")))
         with lock:
-            print(f"[Registros] Estado actual: {registros}")
-        
-        
-        
-def Querry():
-    while True:
-        time.sleep(t_registro * 60)
-        try:
-            conn = sqlite3.connect(Dir_DB)
-            cursor = conn.cursor()
-            timestamp = datetime.now()
-
-            with lock:
-                datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
-
-            # Verificar si hay datos para insertar
-            if not datos:
-                print(f"[SQLite] No hay datos para registrar en {timestamp}.")
-            else:
-                columnas = ", ".join(datos.keys())
-                valores_placeholder = ", ".join(["?"] * len(datos))
-                query = f"""
-                INSERT INTO sensor_logs (timestamp, {columnas})
-                VALUES (?, {valores_placeholder})
-                """
-                valores = [timestamp] + list(datos.values())
-
-                cursor.execute(query, valores)
-                conn.commit()
-                print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
-                ExportarCSV()
-
-        except sqlite3.Error as e:
-            print(f"[SQLite] Error al insertar datos: {e}")
-
-        except Exception as e:
-            print(f"[Python] Error inesperado: {e}")
-
-        finally:
-            if conn:
-                conn.close()
+            print("\n[Registros] Estado actual:")
+            for nombre, datos in registros.items():
+                print(f"{nombre}: {datos['Valor']}")
+            print()
 
 
+# Exportacion a CSV a la tarjeta SD  
 def ExportarCSV():
     try:
         # Obtener la fecha actual en formato YYYY-MM-DD
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        archivo_csv = os.path.join(Dir_CSV, f"{fecha_actual}.csv")
+        archivo_csv = os.path.join(os.getenv("CSV_EXPORT_DIR"), f"{fecha_actual}.csv")
 
         # Conectar a la base de datos SQLite
-        conn = sqlite3.connect(Dir_DB)
+        conn = sqlite3.connect(os.getenv("DB_PATH"))
         cursor = conn.cursor()
 
         # Consulta para obtener todos los datos del día actual
@@ -195,15 +179,15 @@ def ExportarCSV():
 
 # *****************************************************INICIO DE EJECUCIÓN*****************************************************
 
-print('''------------------------------------------------------------------
-                LABORATORIO DE REMEDIACIÓN 2024
+print(
+'''------------------------------------------------------------------
+                    INTERNATIONAL UANL 2024
       Registro de sensores por protocolo RS485 Modbus RTU
       
             Para detener el proceso cierre la ventana
 ------------------------------------------------------------------''')
-time.sleep(10)
-
-Database(Dir_DB)
+time.sleep(3)
+Database(os.getenv("DB_PATH"))
 
 #-----Lista global con los sensores a monitorear.
 Sensores = []

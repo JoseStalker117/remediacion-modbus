@@ -1,26 +1,12 @@
-import sqlite3
-import asyncio
-from datetime import datetime
-import os
-import csv
+import sqlite3, asyncio, os, csv, firebaseadmin
 from pymodbus.client import ModbusSerialClient
-import pyrebase
-import firebaseadmin
+from dotenv import load_dotenv
+from datetime import datetime
 
+# Carga las variables globales o configuraciones
+load_dotenv("config.env")
 
-# Introducir aquí la dirección de la base de datos
-Dir_DB = "C:/SQLite/remediacion_2024.db"
-
-# Directorio a exportar los archivos csv (Tarjeta SD)
-Dir_CSV = "D:/"
-
-# Tiempo para imprimir la información en consola (segundos).
-t_muestreo = 10
-
-# Tiempo para enviar la información a la base de datos (minutos).
-t_registro = 1
-
-
+# FUNCIONES SQLite3
 sqlite3.register_adapter(datetime, lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S"))
 sqlite3.register_converter("DATETIME", lambda s: datetime.strptime(s.decode(), "%Y-%m-%d %H:%M:%S"))
 
@@ -52,14 +38,51 @@ def Database(db):
         if conn:
             conn.close()
             
+async def Querry(registros):
+    while True:
+        await asyncio.sleep(int(os.getenv("t_registro")) * 60)
+        try:
+            conn = sqlite3.connect(os.getenv("DB_PATH"))
+            cursor = conn.cursor()
+            timestamp = datetime.now()
 
+            datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
+
+            if not datos:
+                print(f"[SQLite] No hay datos para registrar en {timestamp}.")
+            else:
+                columnas = ", ".join(datos.keys())
+                valores_placeholder = ", ".join(["?"] * len(datos))
+                query = f"""
+                INSERT INTO sensor_logs (timestamp, {columnas})
+                VALUES (?, {valores_placeholder})
+                """
+                valores = [timestamp] + list(datos.values())
+
+                cursor.execute(query, valores)
+                conn.commit()
+                print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
+                firebaseadmin.write_data(registros)
+                await ExportarCSV()
+
+        except sqlite3.Error as e:
+            print(f"[SQLite] Error al insertar datos: {e}")
+
+        except Exception as e:
+            print(f"[Python] Error inesperado: {e}")
+
+        finally:
+            if conn:
+                conn.close()
+  
+                
+# Dispositivos Modbus
 def Dispositivos(lista, puerto, nombre, baudrate, paridad):
     lista.append({"Puerto": puerto, "Nombre": nombre, "Baudrate": baudrate, "Paridad": paridad})
     
-
 async def Transmisores(sensor, registros):
     while True:
-        await asyncio.sleep(t_muestreo)
+        await asyncio.sleep(int(os.getenv("t_muestreo")))
         try:
             client = ModbusSerialClient(port=sensor['Puerto'], 
                                         baudrate=sensor['Baudrate'], 
@@ -85,58 +108,24 @@ async def Transmisores(sensor, registros):
             if client:
                 client.close()
                 
-
 async def ImprimirRegistros(registros):
     while True:
-        await asyncio.sleep(t_muestreo)
-        print(f"\n[Registros] Estado actual: {registros}\n")
+        await asyncio.sleep(int(os.getenv("t_muestreo")))
+        print("\n[Registros] Estado actual:")
+        for nombre, datos in registros.items():
+            print(f"{nombre}: {datos['Valor']}")
+        print()
         
-                            
-async def Querry(registros, user):
-    while True:
-        await asyncio.sleep(t_registro * 60)
-        try:
-            conn = sqlite3.connect(Dir_DB)
-            cursor = conn.cursor()
-            timestamp = datetime.now()
 
-            datos = {nombre: registro["Valor"] for nombre, registro in registros.items()}
-
-            if not datos:
-                print(f"[SQLite] No hay datos para registrar en {timestamp}.")
-            else:
-                columnas = ", ".join(datos.keys())
-                valores_placeholder = ", ".join(["?"] * len(datos))
-                query = f"""
-                INSERT INTO sensor_logs (timestamp, {columnas})
-                VALUES (?, {valores_placeholder})
-                """
-                valores = [timestamp] + list(datos.values())
-
-                cursor.execute(query, valores)
-                conn.commit()
-                print(f"[SQLite] Registro insertado: {datos} en {timestamp}")
-                firebaseadmin.write_data(user, registros)
-                await ExportarCSV()
-
-        except sqlite3.Error as e:
-            print(f"[SQLite] Error al insertar datos: {e}")
-
-        except Exception as e:
-            print(f"[Python] Error inesperado: {e}")
-
-        finally:
-            if conn:
-                conn.close()
-                
+# Exportacion a CSV a la tarjeta SD                
 async def ExportarCSV():
     try:
         # Obtener la fecha actual en formato YYYY-MM-DD
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        archivo_csv = os.path.join(Dir_CSV, f"{fecha_actual}.csv")
+        archivo_csv = os.path.join(os.getenv("CSV_EXPORT_DIR"), f"{fecha_actual}.csv")
 
         # Conectar a la base de datos SQLite
-        conn = sqlite3.connect(Dir_DB)
+        conn = sqlite3.connect(os.getenv("DB_PATH"))
         cursor = conn.cursor()
 
         # Consulta para obtener todos los datos del día actual
@@ -172,20 +161,19 @@ async def ExportarCSV():
             conn.close()
 
 
-
+# Ejecución principal
 async def main():
-    print('''------------------------------------------------------------------
-                LABORATORIO DE REMEDIACIÓN 2024
+    print(
+'''------------------------------------------------------------------
+                    INTERNATIONAL UANL 2024
       Registro de sensores por protocolo RS485 Modbus RTU
       
             Para detener el proceso cierre la ventana
 ------------------------------------------------------------------''')
-    await asyncio.sleep(10)
-    
-    user = firebaseadmin.login("admin@bioinsight.com", "admin123456")
-    Database(Dir_DB)
+    await asyncio.sleep(3)
+    Database(os.getenv("DB_PATH"))
 
-    # Lista global con los sensores a monitorear.
+    # Lista con los sensores a monitorear.
     Sensores = []
 
     #-----Conjunto 1 de transmisores-----
@@ -214,9 +202,11 @@ async def main():
     tareas.append(ImprimirRegistros(registros))
 
     # Tarea de Querry
-    tareas.append(Querry(registros, user))
+    tareas.append(Querry(registros))
 
     await asyncio.gather(*tareas)
 
+
+# Class main
 if __name__ == "__main__":
     asyncio.run(main())
