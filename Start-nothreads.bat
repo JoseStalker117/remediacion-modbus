@@ -24,6 +24,16 @@ echo.
 pip install -r "requirements.txt"
 
 
+REM Intentando ejecutar la consola modbus-async
+if exist "modbus-async.py" (
+    echo Ejecutando modbus-async.py...
+    cls
+    start py modbus-async.py
+) else (
+    echo Advertencia: modbus-async.py no encontrado
+)
+
+
 REM Intentando ejecutar la ventana principal
 if exist "modbus-gui.py" (
     echo Ejecutando modbus-gui.py...
