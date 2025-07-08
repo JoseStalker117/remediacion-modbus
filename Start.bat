@@ -25,10 +25,10 @@ pip install -r "requirements.txt"
 
 
 REM Intentando ejecutar la ventana principal
-if exist "modbus-gui.py" (
-    echo Ejecutando modbus-gui.py...
+if exist "modbus-gui.pyw" (
+    echo Ejecutando modbus-gui.pyw...
     cls
-    start py modbus-gui.py
+    start py modbus-gui.pyw
 ) else (
-    echo Advertencia: modbus-gui.py no encontrado
+    echo Advertencia: modbus-gui.pyw no encontrado
 )
